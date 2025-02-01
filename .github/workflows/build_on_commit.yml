@@ -1,35 +1,40 @@
 name: Build
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+    # Get required packages
+    - uses: actions/checkout@v3
+    - uses: carlosperate/arm-none-eabi-gcc-action@v1
+      with:
+        release: '9-2019-q4'
 
-    - name: Build project
-      run: echo "Building project..."
+    # Build with make
+    - name: make
+      env: 
+        VARIANT: VARIANT_ADC
+      run: make
 
-    - name: Upload artifact
+    # Build with Platformio
+    - name: PlatformIO Install
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade platformio
+    - name: PlatformIO Run
+      run: pio run
+
+    - name: 'Upload Build Artifact'
       uses: actions/upload-artifact@v4
       with:
-        name: my-artifact
-        path: path/to/artifact
-
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Download artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: my-artifact
-
-    - name: Deploy project
-      run: echo "Deploying project..."
+        path: ${{github.workspace}}/.pio/build/**
+        name: ${{github.event.repository.name}}_build_${{github.run_number}}
+        retention-days: 5
